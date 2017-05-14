@@ -1,0 +1,35 @@
+Question 3.67
+A) The stack frame for eval is as follows:
+Top -> %rsp -> x
+       	  8    y
+	 16    &z
+	 24    z
+	 ...
+B) It passes the value (%rsp) + 64 through the register %rdi.
+C) It accesses the elements of structure a through the %rsp register.
+D) It stores the three values of structure r in the places (%rdi), (%rdi) + 8,
+and (%rdi) + 16. However, %rdi is simply %rsp + 64 thus the code sets the
+fields of result structure r by using the register %rsp.
+E) The new stack frame for eval is as follows:
+Top -> %rsp -> x
+       	  8    y
+	 16    &z
+	 24    z
+	 ...
+	 64    y
+	 72    x
+	 80    z
+Thus eval can access these values by using offsets from the %rsp register.
+F) It appears that structure values are passed and returned as pointers since
+the assembly code indicates that nothing is really being copied over except
+for the start of where the structure is located in memory.
+
+Question 3.70
+A) e1.p	   0 bytes
+   e1.y	   8 bytes
+   e2.x	   0 bytes
+   e2.next 8 bytes
+B) 16 bytes
+C) void proc (union ele *up) {
+   	up->e2.x = *(next->e1.p) - next->e1.y;
+}
