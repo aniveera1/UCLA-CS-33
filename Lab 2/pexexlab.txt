@@ -1,0 +1,49 @@
+Lab Log
+Name: Anirudh Veeraragavan
+
+The first step after logging into the seasnet server is to make sure the
+executable actually works with the indicated command. We can test this by
+running the command ~eggert/bin64/bin/emacs-25.2 -Q -batch -eval
+'(print (* 1250284240 -1844255039))' from our home directory, and we see that it
+does work as expected. Thus we can now begin the process of using gdb to gather
+the traces that we need. We do this with the command gdb --args
+~eggert/bin64/bin/emacs-25.2 -batch -eval '(print (* 1250284240 -1844255039))',
+which simply runs gdb on the executable with the specific arguments enabled. As
+per the spec we need to collect traces for every instruction in the Ftimes
+function, therefore we use break Ftimes to set a breakpoint at the Ftimes
+function and run. Execution stops at the Ftimes function as expected, and we can
+start collecting traces.
+
+To collect our traces, we will need the commmands disassemble /mr and info
+registers. Disassemble /mr dumps all the assembly code, which effectively gives
+us the first three columns, and info registers prints out the contents of all
+the registers, which we can use to determine the fourth column. As per the spec
+we have all step through all the instructions of Ftimes and of any functions it
+calls directly or indirectly. Thus for each instruction we simply use a
+combination of disassemble /mr, info registers, and si to find all the content we
+need for our traces file. This entire process will take some time, and each trace
+will be stored in the file trace.tr. During the process I had actually collected
+traces past the end of Ftimes, so I had to use the list and diassemble /mr
+arith_driver commands to find the correct place to stop. After finally collecting
+each trace, we can quit from gdb and move on to the next part of the
+lab.
+
+The next step is to compile a function with different options on gcc, and compare
+the resulting assembly language code. First I use emacs to create three files,
+test1.c, test2.c, test3.c, each containing the function. Then I use the following
+commands in order to generate the three assembly code files:
+gcc -O2 -S test1.c
+gcc -O2 -fwrapv -S test2.c
+/usr/local/cs/bin/gcc -S -O2 -fsanitize=undefined test3.c
+These commands will give me three files, test1.s, test2.s, test3.s, and by
+examining these files I can describes the various differences in assembly code. I
+then record these differences in a file called testovf.txt. After recording and
+justifying the differences, I can move on to the final part of the lab.
+
+The final part of this lab is to answer five questions. In order to answer these
+questions I had to use a combination of gdb, Google, and examination of the emacs
+source code. I used Google in order to learn more about Elisp and understand how it
+did computations. I used gdb for the various commands, so that I could examine
+the contents of the registers right before values were printed to the screen.
+Finally I used the emacs source code in order to get context for some of the
+questions.

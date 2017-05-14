@@ -1,0 +1,40 @@
+Assembly Language Description
+Name: Anirudh Veeraragavan
+
+First I will simply describe how the assembly language looks in each instance, and
+then I will justify their differences by explaining why the assembly language was
+outputted in that way.
+
+1) The first option was compiling the function using just -O2. This assembly
+language is very simple as it just has two instructions, and in fact it will
+always return 0.
+
+2) The second option was compiling the function using -O2 -fwrapv. This assembly
+language has five instructions, and because overflow is now defined as wrapping
+around it actually checks whether or not n + 9223372036854775807 is less than n.
+Specifically it adds n to 9223372036854775807, compares this value to n, and if
+that value is less than n returns 1, otherwise it returns 0.
+
+3) The third option was compiling the function using -O2 -fsanitize=undefined.
+This assembly language is very long since the option -fsanitize=undefined tells
+the compiler to include computations to detect undefined behavior at runtime.
+Specifically, the compiler has now introduced a check at the machine level when
+the addition occurs to determine whether or not it overflowed.
+
+In terms of the differences, the first option always returns 0, the second option
+defines overflow as wrapping around, and the third option includes a check
+for overflow since it is technically undefined behavior. These differences can
+be explained by the options that were selected.
+
+For the first option, since -O2 was selected the compiler optimizes the machine
+code. Thus the compiler realizes that mathematically speaking the addition of a
+positive number to some number N will always result in a value larger than N. Thus
+in this instance the compiler can simply always return 0. For the second option,
+-fwrapv is selected so overflow will wrap around. Thus there can be cases where
+n + 9223372036854775807 will be less than n, thus the compiler will check for this
+in every instance. For the third option, -fsanitize=undefined is selected so the
+compiler introduces fast checks for undefined behavior. Overflow is technically
+undefined, therefore, the compiler introduces a check for it through the
+assembly language. That is why in terms of assembly-language, the first option
+is short and always returns 0, the second option does the addition and comparison
+each time, and the third option is long with many undefined behavior checks.

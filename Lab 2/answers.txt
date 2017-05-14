@@ -1,0 +1,38 @@
+Lab Answers
+Name: Anirudh Veeraragavan
+
+1) The correct mathematical answer is -2305843009802285360 whereas emacs outputs
+2305843008625102544. This is because emacs calculates the right result, but when it tries to
+store it in %rax through the lea instruction the result is too large to be stored. Thus the
+%rax register overflows, and since signed overflow is undefined emacs simply outputs the
+answer of 2305843008625102544. This shows that the instruction that causes the problem is when
+lea tries to store the result in %rax.
+
+2) The shell command outputs that number because the smallest number possible depends on the
+architecture of the machine. This emacs was compiled for a 64 bit machine, and on a 64 bit
+machine the smallest integer emacs can handle is -2305843009213693952 or -2^61 according to
+the GNU manual. In fact we can test this by running the command emacs -Q -batch -eval
+'(print (expt -2 61))' and seeing that indeed it outputs -2305843009213693952 as well.
+
+3) Emacs computation is based on elisp, and when elisp does computations it adds a marker
+because it is a dynamically-typed language. Upon examining the elisp source code we see that
+the marker is multiply by 4 and add 2. Thus when we run this command in gdb, we see that the
+last thing added to rax is 6. Elisp will then undo the marker to the value in rax,
+specifically it subtracts 2 and divides by 4. This gives us the result of 1, which is then
+outputted to the screen.
+
+4) There would be no problems since any arithmetic would simply wrap around in the case of
+overflow. Thus in terms of compiling and running emacs would still be fine. However, there
+would definitely be instances in which the result would not make sense from a mathematical
+point of view. For example, with -frwapv the multiplication of two positive numbers could
+result in a negative number. This could be considered a problem because if the user is not
+aware of overflow wraparound they would be very confused by the result. Thus we see that
+while the -fwrapv option would not cause problems with compiling or running, it might
+cause problems when the user tries to understand the result.
+
+5) It appears that the segmentation fault occurs in the function __strcpy_sse2_unaligned (),
+as that is what gdb indicates. Additionally through the backtrace command we see that function
+is at the top of the program stack. Then we use the set disassemble-next-line on command to
+see what exactly is happening at the machine level. The specific instruction that appears to
+cause this problem is movdqu %xmm7,-0x10(%rdi). The machine is attempting to store a 128 bit
+value in a 64 bit register, which causes the error.
