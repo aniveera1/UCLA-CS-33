@@ -1,0 +1,26 @@
+Question 2.89
+
+A) Yes, the expression always yields 1. When casting x to the double dx, it will
+preserve the exact numerical value of x. Therefore casting dx to a float is
+equivalent to casting x itself to a float since x and dx have the exact
+same numerical value. Additionally casting an int to a float does not
+overflow, and while a double to float may overflow, since in this case the
+double was based of an int's value no overflow will occur.
+
+B) No, the expression does not always yield 1. If x = INT_MIN and y = INT_MAX,
+x - y will overflow to 1 whereas dx - dy will simply equal some very negative
+number. This is a question which relies on the -fwrapv flag since otherwise
+x - y would not be defined.
+
+C) Yes, the expression always yields 1. dx, dy, and dz are all within the range
+[INT_MIN, INT_MAX]; therefore, the order of their addition will not affect
+results since the answer can be represented exactly. This question does not rely
+on -fwrapv.
+
+D) No, the expression does not always yield 1. If x = INT_MAX, y = INT_MAX - 1,
+and z = INT_MAX - 2, the exact value of the expression dx * dy * dz cannot be
+stored; therefore, due to rounding, the order of multiplication will make a
+difference. This question does not rely on -fwrapv.
+
+E) No, the expression does not always yield 1. If x = 0 and z = 1, then dz / dz
+equals 1 whereas dx / dx equal NaN. This question does not rely on -fwrapv.
