@@ -1,0 +1,12 @@
+2.72
+A) The conditional test always succeeds because in the if statement an unsigned
+integer is being subtracted from a signed integer; therefore, C implicity casts
+the signed integer to an unsigned integer and any operation involving two
+unsigned integers will always return a value >= 0, which is why the conditional
+test always succeeds.
+B) The following code will work:
+void copy_int(int val, void *buf, int maxbytes) {
+     int spaceLeft = maxbytes - sizeof(val);
+     if (spaceLeft >= 0)
+     	memcpy(buf, (void *) &val, sizeof(val));
+}

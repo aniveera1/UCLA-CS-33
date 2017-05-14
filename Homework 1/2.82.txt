@@ -1,0 +1,49 @@
+2.82
+A) This is not always true. If x equals INT_MIN, then -x will still equal
+INT_MIN thus a simple example of arguments that would cause the expression
+to yield 0 is x = INT_MIN and y = 5.
+B) This is always true. This is shown by simplifying down the left hand side
+of the expression as follows: ((x + y)<<4) + y - x
+       		     	    = ((x + y)*2^4) + y - x
+			    = x*2^4 + y*2^4 + y - x
+			    = 16x - x + 16y + y
+			    = 17y + 15x, which equals the right hand side
+C) This is always true. We can simplify the left hand side as follows:
+     ~x + ~y + 1
+   = -x - 1 -y - 1 + 1
+   = -x -y - 1
+   We can then simplify the right hand side as follows:
+     ~(x + y)
+   = -(x + y) - 1
+   = -x -y - 1. Which is always equal to the simplified left hand side, thus
+   the statement is always true.
+D) This is always true. Changing a signed integer to an unsigned integer does
+not alter the bit pattern in any way; therefore, uy - ux = (unsigned) y - x.
+Taking the negative of an unsigned value merely flips the bits of that value, so
+we can represent -(y - x) as x - y. We can then simplify the right hand side as follows:
+     -(unsigned) y - x
+   = - (uy - ux)
+   = ux - uy. Which is always equal to the left hand side, thus the statement is always
+   true.
+E) This is always true. There are two possibilities for x, positive or negative. If x is
+positive the leading bit is 0, therefore, the right shift will simply add two zeros to the front
+of the int, and then the left shift will add two zeros to the back of the int. Thus after
+the two shifts x will either be equal to or smaller than the previous value of x due
+to the fact that only zeros were added. If x is negative the leading is 1, therefore, the left
+shift will simply add two ones to the front of the int. Then the left shift will add two zeros
+to the back of the int. Thus after the two shifts x will again be either equal to or smaller
+than the previous value because the right shift maintains x as negative and the left shift
+makes x more negative.
+F) This is always true. First, on the right hand side we can simplfy down -1 << 31 and see that
+it equals INT_MIN, which has a bit representation of one 1 followed by all zeros. Now we have two
+possibilities, x is either positive or negative. If x is positive, the leading bit is 0 in which case
+x >> 1 will simply add 0 to the front of the bit representation of x and (ux & INT_MIN) will be 0
+because INT_MIN is all 0 except for the leading bit, and ux's leading bit is 0. Thus when we
+apply the right shift to ux, we will obtain the same result as x >> 1. If x is negative, the leading
+bit is 1 in which case x >> 1 will simply add 1 to the front of the bit representation of x and
+(ux & INT_MIN) will be INT_MIN because INT_MIN is all 0 except for the leading bit, and ux's leading
+bit is 1. Thus when we apply the right shift to ux it will add a 0 to the front of ux's bit
+representation and when we add INT_MIN to ux it will change that 0 to a 1. Thus in this case as well
+the left side equals the right side, proving the expression to always be true.
+G) This is not always true. If x equals -1, the left hand side equals -1 and the right hand side equals
+127, which is not equal.
