@@ -1,0 +1,184 @@
+Laboratory Log
+Name: Anirudh Veeraragavan
+
+Question Answers
+1) I made SP crash by exploiting the config file option. I essentially created
+a config file, crashSp.txt, that contained multiple options with long invalid
+strings for each one. Thus when the program tries to parse the config file,
+before it can realize the options are invalid the buffer overflows and the
+canary is overwritten, which causes the crash.
+2) xor    %gs:0x14,%eax
+3) This machine instruction, which occurs in thttpd.c, is the instruction that
+checks whether the value of the canary has been modified or not. GS is an extra
+segment of memory were the canary is stored, and this value is being compared
+to the value of the canary pulled off the stack. If they are not equal, the
+machine code jumps to another location and calls <__stack_chk_fail@plt>, which
+is the function that will eventually cause the crash. Thus we see that this
+instruction determines whether the program should crash or not.
+
+4) I made AS crash by again exploiting the config file option. This time I
+realized that the fgets function would read up to 1000 characters even though
+the array it was storing these characters into was only 100 characters. Thus I
+created a config file, crashAs.txt, that contained an option with an invalid
+string longer than 100 characters. When the program tries to parse this config
+file it will run into an invalid access error because of the array, and address
+sanitization recognizes this buffer overflow and causes the program to crash.
+5) call   0x804a4b0 <strchr@plt>
+6) This machine instruction calls a function which operates on the array.
+However the array overflowed due to the fgets function, therefore this function
+call triggers the address sanitization, which determines that the array did
+overflow and causes the program to crash. Thus this machine instruction triggers
+a series of events which culminate in the program crashing.
+
+7) I made NO crash in a similar way to AS by exploiting the fgets function.
+Again this causes an invalid access error due to the characters read being
+larger than the array itself, and this leads to a segmentation fault.
+8) retq
+9) This machine instruction returns from the read_config function. It causes
+the error because of the invalid array access that occurred earlier. Since AS
+was not specified the error does not occur immediately after the invalid access
+but rather at the end of the function. Thus this machine instruction which leads
+to the function's completion is what causes the error.
+
+10) -fstack-protector-strong uses canaries to check for buffer overflow whereas
+-fsanitize=address uses shadow memory to check for buffer overflows. Within the
+context of handle_read, we see that NO and SP are essentially the same because
+SP only has one check for the canary at the end of read_config. Thus within
+handle_read SP has no special checks in the machine code, which is why it is
+identical to NO. On the other hand, AS is significantly different because it
+has many checks based around shadow memory all throughout handle_read. AS
+maps shadow memory around the buffer and constantly checks whether the shadow
+memory is being accessed; if so, it causes the program to crash. These checks
+are included throughout handle_read, which is why AS is not only much longer
+in terms of machine code but also significantly different when compared to NO
+and SP.
+
+11) On a high level, my exploit works by overriding the return address and
+injecting code that causes the file target.txt to be deleted. The first step is
+to determine how many bytes I need to overwrite the return address, and I can do
+this through gdb by breaking at read_config, and using the commands print &line
+and i r rsp. When I subtract these two values I get 152 bytes or 152 characters.
+Thus I need 152 characters of garbage value including the initial "port=" in
+order to overwrite the return address. Now I need to determine which code to
+inject.
+    The code I inject will first move the hex value of "target.txt" into rdi,
+move 57 into eax, and then call syscall. Unlink is a system call that deletes a
+file, and it will delete the file name that is associated with the value in rdi.
+Thus by putting "target.txt" into rdi, we are effectively passing it as an
+argument to unlink. To call unlink itself, the program calls syscall, which
+looks at the value in eax and calls the system calls associated with that value.
+For unlink, the associated value is 57, which is why we place 57 in eax. The
+final call to syscall will then cause "target.txt" to be deleted.
+    Finally the return address itself is simply the current return address plus
+11 bytes for "target.txt" plus 8 bytes for the mov "target.txt",%rdi instruction.
+This address must be reversed because the machine follows little endian. Thus
+when I construct my final hex file it becomes: [new return address] + [hex value
+of "target.txt"] + [move name into %rdi insn] + [move 57 into %eax insn] + [call
+syscall].
+    However we are not done. We now have to convert these hex values into ASCII,
+and we can do so through a simple C program that uses fscanf to convert hex to
+decimal, cast decimal values to char, and print them out screen. Then we redirect
+this output to a file "exploit.txt". Then we add our values to overwrite the
+return address before these values, which consist of "port=" plus 147 bytes of
+garbage values. Thus our final exploit.txt file ends up being "port=" + [147
+bytes of garbage values] + [injected code].
+    Now we test our exploit. First we check that target.txt is there using the
+command ls target.txt. Then we run our executable in gdb, and use the command
+run -p 13113 -D -C exploit.txt. We get a segmentation error but that is
+irrelevant. Then we exit back into the directory, run the command ls target.txt,
+and get output: ls: cannot access target.txt: No such file or directory. Thus
+our exploit works.
+
+Lab Log
+
+The first step is to download sthttpd 2.27.0 and unzip it on the linux server.
+Then I can use emacs on the files thttpd.c and libhttpd.c in order to apply the
+respective patches. After ensuring the right version of gcc is being used, I can
+start building the three version of thttpd. The first step is to build using the
+commands ./configure \ and LDFLAGS="-Xlinker --rpath=/usr/local/cs/gcc-$(gcc
+-dumpversion)/lib". Then I can create the three different executables by using
+the different compilation flags, and renaming the three executables as thttpd-sp,
+thttpd-as, and thttpd-no.
+
+Then I tested that the three executables worked in the normal cases, and because
+of the new patch everything worked fine. Specifically I was able to see the output
+of my test file "test.txt" in all three cases. Next I had to create text files
+that would cause the three executables to crash. The text files would be used as
+the configuration options for the exectuable, and would exploit the bug introduced
+by the patch to cause the program to crash. I knew that my files would have to
+take advantage of buffer overflow, and after a few iterations I had successfully
+made three text files which would cause the three programs to crash.
+
+Backtrace for thttpd-sp:
+#0  0x00007ffff6db3118 in ?? () from /lib64/libgcc_s.so.1
+#1  0x00007ffff6db4019 in _Unwind_Backtrace () from /lib64/libgcc_s.so.1
+#2  0x00007ffff76e8636 in backtrace () from /lib64/libc.so.6
+#3  0x00007ffff7651f24 in __libc_message () from /lib64/libc.so.6
+#4  0x00007ffff76ec047 in __fortify_fail () from /lib64/libc.so.6
+#5  0x00007ffff76ec010 in __stack_chk_fail () from /lib64/libc.so.6
+#6  0x0000000000405056 in read_config (filename=<optimized out>) at thttpd.c:1190
+#7  0x0000000000006463 in ?? ()
+#8  0x0000000000000018 in ?? ()
+#9  0x00007fffffffe4b7 in ?? ()
+#10 0x00007fffffffd030 in ?? ()
+#11 0x00007fffffffcfb0 in ?? ()
+#12 0x00007fffffffe1d0 in ?? ()
+#13 0x0000000000000000 in ?? ()
+
+Backtrace for thttpd-as:
+#0  uw_frame_state_for (context=context@entry=0xffffb340, fs=fs@entry=0xffffb3c0)
+    at ../../../../gcc-6.3.0/libgcc/unwind-dw2.c:1249
+#1  0xf764b508 in _Unwind_Backtrace (
+    trace=0xf7b303f0 <__sanitizer::Unwind_Trace(_Unwind_Context*, void*)>,
+    trace_argument=0xffffb4b8) at ../../../../gcc-6.3.0/libgcc/unwind.inc:290
+#2  0xf7b3050b in __sanitizer::BufferedStackTrace::SlowUnwindStack (this=0xffffb5d0,
+    pc=4155069870, max_depth=256)
+    at ../../../../../gcc-6.3.0/libsanitizer/sanitizer_common/sanitizer_unwind_linux_libcdep.cc:113
+#3  0xf7b2ae26 in __sanitizer::BufferedStackTrace::Unwind (this=0xffffb5d0,
+    max_depth=256, pc=4155069870, bp=4294950504, context=0x0, stack_top=4294959104,
+    stack_bottom=4286570496, request_fast_unwind=false)
+    at ../../../../../gcc-6.3.0/libsanitizer/sanitizer_common/sanitizer_stacktrace_libcdep.cc:65
+#4  0xf7b13ecb in __asan::GetStackTraceWithPcBpAndContext (fast=false, context=0x0,
+    bp=4294950504, pc=4155069870, max_depth=256, stack=0xffffb5d0)
+    at ../../../../../gcc-6.3.0/libsanitizer/asan/asan_stack.h:49
+---Type <return> to continue, or q <return> to quit---
+#5  __asan::ReportGenericError (pc=<optimized out>, bp=<optimized out>,
+    sp=<optimized out>, addr=<optimized out>, is_write=<optimized out>,
+    access_size=<optimized out>, exp=<optimized out>, fatal=<optimized out>)
+    at ../../../../../gcc-6.3.0/libsanitizer/asan/asan_report.cc:1092
+#6  0xf7a955c3 in __interceptor_strchr (str=<optimized out>, c=<optimized out>)
+    at ../../../../../gcc-6.3.0/libsanitizer/asan/asan_interceptors.cc:468
+#7  0x0804eb77 in read_config (filename=<optimized out>) at thttpd.c:1018
+#8  0x61616161 in ?? ()
+#9  0x0a5c6161 in ?? ()
+#10 0xf79ecf00 in line () from /lib/libc.so.6
+#11 0x0000006e in ?? ()
+#12 0x00000005 in ?? ()
+#13 0xffffd248 in ?? ()
+
+Backtrace for thttpd-no:
+#0  0x0000000000404d9f in read_config (filename=<optimized out>) at thttpd.c:1190
+#1  0x6161616161616161 in ?? ()
+#2  0x6161616161616161 in ?? ()
+#3  0x6161616161616161 in ?? ()
+#4  0x6161616161616161 in ?? ()
+#5  0x6161616161616161 in ?? ()
+#6  0x6161616161616161 in ?? ()
+#7  0x6161616161616161 in ?? ()
+#8  0x6161616161616161 in ?? ()
+#9  0x0000000061616161 in ?? ()
+#10 0x0000000000000000 in ?? ()
+
+The next step is to generate the assembly code for the three executables. This is a simple task as
+I simply had to use gcc with the -S flag and all the respective flags depending on the executable.
+I then analyzed the assembly code for the function handle_read, and have described the differences
+above.
+
+The final step was to create the exploit, and this was the most tedious part of the lab. It
+required many hours of searching and work in order to be completed. For my exploit, the starting
+address was 7fffffffce90 and the return address was 7fffffffcf28. I used xxd to generate the hex
+values for target.txt, and inside of gdb used the command disas /r unlink to determine the hex code
+needed to run the function unlink. I also had to use objdump to determine what the hex code for
+the mov value to rdi instruction is. Finally I had to write a C program that translated hex code
+into ascii characters. It leveraged fscanf and printf functions. Ultimately after a long process I
+was able to get the exploit to work, and successfully deleted target.txt.
