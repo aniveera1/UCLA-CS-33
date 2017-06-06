@@ -1,0 +1,10 @@
+12.18
+A) Unsafe; the instructions L1, S2 are within the unsafe region
+B) Safe; none of the instructions are within the unsafe region
+C) Unsafe; the instructions L2, U2, S2 are within the unsafe region
+
+12.24
+The functions are reentrant. According to the description of the RIO functions, "...
+can be interleaved arbitrarily on the same descriptor." This means that the functions
+can read some input, stop, and read some input again. Since the functions can be
+safely interrupted in the middle of execution, they are reentrant.
