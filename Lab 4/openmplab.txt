@@ -1,0 +1,134 @@
+Lab Log
+Name: Anirudh Veeraragavan
+
+The first step is to copy the tar file to the linux server and unzip it, creating a
+directory called openmplab. Now we need to determine how fast the program runs without
+any parallelism, and we can do this through the commands make seq and ./seq. We run
+./seq five times, and average the results to get an average runtime of 0.776919 seconds.
+Here is output from one of the runs:
+FUNC TIME : 0.773905
+TOTAL TIME : 2.668166
+
+Now we compile the program with a profiler, to determine where the bottlenecks are. We
+do this through the commands make seq GPROF=1, ./seq, and gprof seq | less. This yields
+the following output:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  ms/call  ms/call  name
+ 66.39      0.61     0.61       15    40.72    43.76  func1
+ 26.12      0.85     0.24  5177344     0.00     0.00  rand2
+  2.18      0.87     0.02       15     1.34     1.34  func4
+  1.09      0.88     0.01       15     0.67     0.67  func3
+  1.09      0.89     0.01        2     5.01     5.01  init
+  1.09      0.90     0.01        1    10.01    10.01  imdilateDisk
+  1.09      0.91     0.01                             filter
+  1.09      0.92     0.01                             sequence
+  0.00      0.92     0.00   983042     0.00     0.00  round
+  0.00      0.92     0.00   491520     0.00     0.00  findIndexBin
+  0.00      0.92     0.00       16     0.00     0.00  dilateMatrix
+  0.00      0.92     0.00       15     0.00     0.00  func2
+  0.00      0.92     0.00       15     0.00     0.00  func5
+  0.00      0.92     0.00       15     0.00     0.00  rand1
+  0.00      0.92     0.00        2     0.00     0.00  get_time
+  0.00      0.92     0.00        1     0.00   194.69  addSeed
+  0.00      0.92     0.00        1     0.00     0.00  elapsed_time
+  0.00      0.92     0.00        1     0.00     0.00  fillMatrix
+  0.00      0.92     0.00        1     0.00     0.00  func0
+  0.00      0.92     0.00        1     0.00     0.00  getNeighbors
+
+From this output we clearly see that func1 is the main bottleneck, so we will start
+there; nevertheless, we will optimize func0 to func5 in order to achieve max performance.
+
+We open func.c and start using the interface provided by OpenMP to enable multithreading.
+For func1 we notice the nested for loop, and realize it is what causes the bottleneck in
+func1. Thus we use the commands omp_set_num_threads(30) and #pragma omp parallel to make
+this nested for loop run in parallelism. We also have to make the variables index_X and
+index_Y private, since each thread should not be writing over other threads' variables.
+We then similarily parallelize the other for loops within func1, and within all the other
+functions.
+
+We then determine our speedup by running the command make check five times, and averaging
+the runtimes. In doing so we get an average sped up runtime of 0.124690 seconds giving a
+speedup of 6.23x. Here is output from one of the runs:
+FUNC TIME : 0.126110
+TOTAL TIME : 2.077386
+
+To confirm our work we run the program with OpenMP and Gprof enabled. We do this through
+the commands make omp GPROF=1, ./omp, and gprof omp | less. This gives the following
+output:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls  ms/call  ms/call  name
+ 75.08      0.69     0.69       28    24.67    28.63  filter
+ 11.97      0.80     0.11    31934     0.00     0.00  findIndexBin
+  7.62      0.87     0.07  4232163     0.00     0.00  rand2
+  2.18      0.89     0.02                             sequence
+  1.09      0.90     0.01        2     5.01     5.01  init
+  1.09      0.91     0.01        1    10.01    79.46  addSeed
+  1.09      0.92     0.01        1    10.01    10.01  imdilateDisk
+  0.00      0.92     0.00    88322     0.00     0.00  round
+  0.00      0.92     0.00       16     0.00     0.00  dilateMatrix
+  0.00      0.92     0.00       15     0.00     0.00  func1
+  0.00      0.92     0.00       15     0.00     0.00  func2
+  0.00      0.92     0.00       15     0.00     0.00  func3
+  0.00      0.92     0.00       15     0.00     0.00  func4
+  0.00      0.92     0.00       15     0.00     0.00  func5
+  0.00      0.92     0.00       15     0.00     0.00  rand1
+  0.00      0.92     0.00        2     0.00     0.00  get_time
+  0.00      0.92     0.00        1     0.00     0.00  elapsed_time
+  0.00      0.92     0.00        1     0.00     0.00  fillMatrix
+  0.00      0.92     0.00        1     0.00     0.00  func0
+  0.00      0.92     0.00        1     0.00     0.00  getNeighbors
+
+We clearly see that the functions are no longer the bottleneck, and we have successfully
+parallelized them.
+
+Finally we check to make sure we have no memory allocation problems. We do this through
+the commands make omp MTRACE=1, ./omp, and make checkmem. This yields the following
+output:
+
+Memory not freed:
+-----------------
+           Address     Size     Caller
+0x00000000022170c0     0xc0  at 0x7f58eac40869
+0x0000000002217190    0x108  at 0x7f58eac408b9
+0x00000000022172a0    0x240  at 0x7f58eb170c25
+0x00000000022174f0    0x240  at 0x7f58eb170c25
+0x0000000002217740    0x240  at 0x7f58eb170c25
+0x0000000002217990    0x240  at 0x7f58eb170c25
+0x0000000002217be0    0x240  at 0x7f58eb170c25
+0x0000000002217e30    0x240  at 0x7f58eb170c25
+0x0000000002218080    0x240  at 0x7f58eb170c25
+0x00000000022182d0    0x240  at 0x7f58eb170c25
+0x0000000002218520    0x240  at 0x7f58eb170c25
+0x0000000002218770    0x240  at 0x7f58eb170c25
+0x00000000022189c0    0x240  at 0x7f58eb170c25
+0x0000000002218c10    0x240  at 0x7f58eb170c25
+0x0000000002218e60    0x240  at 0x7f58eb170c25
+0x00000000022190b0    0x240  at 0x7f58eb170c25
+0x0000000002219300    0x240  at 0x7f58eb170c25
+0x0000000002219550    0x240  at 0x7f58eb170c25
+0x00000000022197a0    0x240  at 0x7f58eb170c25
+0x00000000022199f0    0x240  at 0x7f58eb170c25
+0x0000000002219c40    0x240  at 0x7f58eb170c25
+0x0000000002219e90    0x240  at 0x7f58eb170c25
+0x000000000221a0e0    0x240  at 0x7f58eb170c25
+0x000000000221a330    0x240  at 0x7f58eb170c25
+0x000000000221a580    0x240  at 0x7f58eb170c25
+0x000000000221a7d0    0x240  at 0x7f58eb170c25
+0x000000000221aa20    0x240  at 0x7f58eb170c25
+0x000000000221ac70    0x240  at 0x7f58eb170c25
+0x000000000221aec0    0x240  at 0x7f58eb170c25
+0x000000000221b110    0x240  at 0x7f58eb170c25
+0x000000000221b360    0x240  at 0x7f58eb170c25
+0x000000000221b5b0    0x240  at 0x7f58eb170c25
+0x000000000221b800    0x240  at 0x7f58eb170c25
+0x0000000002bfbab0     0xd0  at 0x7f58eac40869
+0x0000000002bfbb90   0x1e90  at 0x7f58eac40869
+
+However we can safely ignore these since they are injected into the program by OpenMP and
+are not in our control. These memories will be freed after the process has completely
+exited, but since the memcheck stops the program before it completely exits these
+memories show up as not freed. Thus we have no memory errors in our program.
