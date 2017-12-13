@@ -2,7 +2,6 @@
  * CS:APP Data Lab 
  * 
  * Name: Anirudh Veeraragavan
- * UID: 004767663
  * 
  * bits.c - Source file with your solutions to the Lab.
  *          This is the file you will hand in to your instructor.
